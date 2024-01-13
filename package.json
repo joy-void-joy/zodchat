@@ -1,0 +1,52 @@
+{
+  "name": "zodchat",
+  "description": "Typechat, but with Zod!",
+  "module": "src/index.ts",
+  "version": "1.0.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/joy-void-joy/zodchat",
+  "scripts": {
+    "build": "bun run build.ts && bun run build:declaration",
+    "build:declaration": "bun run tsc",
+    "prepublishOnly": "bun run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joy-void-joy/zodchat.git"
+  },
+  "bugs": "https://github.com/joy-void-joy/zodchat/issues",
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "zod",
+    "GPT",
+    "GPT-4",
+    "schema",
+    "LLM",
+    "prompt",
+    "TypeScript",
+    "validation"
+  ],
+  "devDependencies": {
+    "@types/lodash": "^4.14.202",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "bun-plugin-dts": "^0.2.1",
+    "bun-types": "latest",
+    "eslint": "^8.53.0",
+    "typescript": "latest",
+    "prettier": "^3.0.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "openai": "^4.11.1",
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.21.4"
+  }
+}
