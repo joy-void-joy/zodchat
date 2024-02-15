@@ -4,6 +4,20 @@ import OpenAI from 'openai'
 
 export const openai = new OpenAI()
 
+/**
+ * Prompt GPT-4 for a well-typed object
+ *
+ * @param output_schema - Zod schema for the return value
+ * @param preamble - Array of chat messages to prompt GPT-5 with. See https://platform.openai.com/docs/api-reference/chat/create
+ * @param system_prompt - Overview of the task to be performed
+ * @param user_prompt - User input (can be a string or an object)
+ * @param examples - List of pairs of user inputs and expected outputs
+ * @param function_name - Name of the function call to give to GPT-4.
+ * @param function_description - Description of the function call
+ * @param temperature - Passed directly to GPT-4
+ * @param model - Passed directly to GPT-4
+ * @returns A completion from GPT-4 that has been parsed by the output_schema
+ */
 export async function prompt<
   UserInput,
   ZOutput,
@@ -11,30 +25,27 @@ export async function prompt<
   ZInput,
 >({
   output_schema,
-  user_prompt = null,
-  function_name = null,
   preamble = [],
-  system_prompt = '',
+  system_prompt = null,
+  user_prompt = null,
   examples = [],
+  function_name = 'response',
   function_description = '',
   temperature = 0,
-  model = 'gpt-4-1106-preview',
+  model = 'gpt-4-turbo-preview',
   max_tokens = 4096,
 }: {
-  output_schema: Record<string, zod.ZodSchema<ZOutput, ZDef, ZInput>>
-  examples?: [UserInput, ZInput][]
-  user_prompt?: UserInput | null
-  function_name?: string | null
+  output_schema: zod.ZodSchema<ZOutput, ZDef, ZInput>
   preamble?: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
-  system_prompt?: string
+  system_prompt?: string | null
+  user_prompt?: UserInput | null
+  examples?: [UserInput, ZInput][]
+  function_name?: string
   function_description?: string
   temperature?: number
   model?: string
   max_tokens?: number
 }) {
-  const [record_name, function_input_schema] = Object.entries(output_schema)[0]
-  const full_function_name = function_name || `suggest_${record_name}`
-
   const {
     choices: [
       {
@@ -43,8 +54,10 @@ export async function prompt<
     ],
   } = await openai.chat.completions.create({
     messages: [
-      { role: 'system', content: system_prompt },
       ...preamble,
+      ...(system_prompt
+        ? [{ role: 'system', content: system_prompt } as const]
+        : []),
       ...examples.flatMap(
         ([user_example, function_call_example]) =>
           [
@@ -55,7 +68,7 @@ export async function prompt<
             },
             {
               role: 'function',
-              name: full_function_name,
+              name: function_name,
               content: JSON.stringify(function_call_example, null, 2),
             },
           ] as OpenAI.Chat.Completions.ChatCompletionMessageParam[]
@@ -71,22 +84,20 @@ export async function prompt<
     max_tokens,
     functions: [
       {
-        name: full_function_name,
+        name: function_name,
         description: function_description,
-        parameters: zodToJsonSchema(function_input_schema),
+        parameters: zodToJsonSchema(output_schema),
       },
     ],
-    function_call: { name: full_function_name },
+    function_call: { name: function_name },
   })
 
-  if (function_call?.name != full_function_name) {
+  if (function_call?.name != function_name) {
     // Should never happen
     throw new Error(
-      `Expected function call ${function_call} to be ${full_function_name}`
+      `Expected function call ${function_call} to be ${function_name}`
     )
   }
 
-  return await function_input_schema.parseAsync(
-    JSON.parse(function_call.arguments)
-  )
+  return await output_schema.parseAsync(JSON.parse(function_call.arguments))
 }
